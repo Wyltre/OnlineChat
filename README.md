@@ -1,6 +1,3 @@
-# Merhabalar
-
-Görmüş olduğunuz proje chat gpt ve ben tarafından yapıldı ! 
 
 ## Nedir Bu ?
 
