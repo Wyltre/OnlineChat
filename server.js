@@ -1,50 +1,69 @@
-var app = require("express")();
-var http = require("http").createServer(app);
-var io = require("socket.io")(http);
+const express = require("express");
+const http = require("http");
+const socketIo = require("socket.io");
 
-var typing=false;
-var timeout=undefined;
-var user;
+const app = express();
+const server = http.createServer(app);
+const io = socketIo(server);
 
-app.get("/", function(req, res) {
+let users = {};
+
+app.get("/", (req, res) => {
   res.sendFile(__dirname + "/index.html");
-  console.log("listening on *:3000");
 });
 
-io.on("connection", function(socket) {
+io.on("connection", (socket) => {
   console.log("a user connected");
+
+  socket.on('set username', (username) => {
+    if (!users[username]) {
+      users[username] = socket.id;
+      socket.username = username;
+      socket.emit('username set', username);
+      io.emit('user list', Object.keys(users));
+    } else {
+      socket.emit('username exists');
+    }
+  });
+
+  socket.on('join general', () => {
+    socket.join('general');
+  });
+
+  socket.on('get users', () => {
+    socket.emit('user list', Object.keys(users));
+  });
+
+  socket.on('chat message', (data) => {
+    if (data.type === 'general') {
+      io.to('general').emit('chat message', data);
+    } else if (data.type === 'private') {
+      if (users[data.id]) {
+        io.to(users[data.id]).emit('chat message', data);
+        io.to(users[data.user]).emit('chat message', data);
+      }
+    }
+  });
+
+  socket.on('typing', (data) => {
+    if (data.type === 'general') {
+      socket.broadcast.to('general').emit('display', data);
+    } else if (data.type === 'private') {
+      if (users[data.id]) {
+        socket.to(users[data.id]).emit('display', data);
+      }
+    }
+  });
+
+  socket.on("disconnect", () => {
+    if (socket.username) {
+      delete users[socket.username];
+      io.emit('user list', Object.keys(users));
+    }
+    console.log("user disconnected");
+  });
 });
 
-http.listen(3000, function() {
+server.listen(3000, () => {
   console.log("listening on *:3000");
 });
-
-io.on('connection', function(socket){
-  socket.on('chat message', function(msg){
-    console.log('message: ' + msg);
-  });
-});
-
-io.emit('some event', { someProperty: 'some value', otherProperty: 'other value' }); // This will emit the event to all connected sockets
-
-io.on('connection', function(socket){
-  socket.broadcast.emit('hi');
-});
-
-io.on('connection', function(socket){
-  socket.on('chat message', function(msg){
-    io.emit('chat message', msg);
-  });
-});
-
-io.on('connection', (socket)=>{
-    /*from server side we will emit 'display' event once the user starts typing
-    so that on the client side we can capture this event and display 
-    '<data.user> is typing...' */
-    socket.on('typing', (data)=>{
-      if(data.typing==true)
-         io.emit('display', data)
-      else
-         io.emit('display', data)
-    })
-}) 
