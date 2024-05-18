@@ -2,106 +2,121 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>ChatKumgames</title>
+  <title>Chat Uygulaması</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
-  font-family: Arial, sans-serif;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  margin: 0;
-  background-color: #f9f9f9;
-}
+      font-family: 'Arial', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #eceff1;
+    }
 
-#container {
-  text-align: center;
-  background-color: white;
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.1);
-  width: 80%;
-  max-width: 400px;
-  margin: auto;
-}
+    #container {
+      text-align: center;
+      background-color: #ffffff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
+      width: 90%;
+      max-width: 500px;
+      margin: auto;
+    }
 
-#display-username {
-  font-size: 24px;
-  font-weight: bold;
-  margin-bottom: 20px;
-}
+    #display-username {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 20px;
+      color: #333;
+    }
 
-#messages {
-  list-style-type: none;
-  margin: 0;
-  padding: 0;
-  text-align: left;
-  max-height: 300px;
-  overflow-y: auto;
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  background-color: #f9f9f9;
-}
+    #menu, #user-list, #messages {
+      list-style-type: none;
+      padding: 0;
+      margin: 10px 0;
+    }
 
-#message-form,
-#username-form {
-  display: flex;
-  align-items: center;
-  margin-top: 20px;
-  width: 100%;
-}
+    #user-list li, #menu li {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      margin-bottom: 10px;
+      cursor: pointer;
+    }
 
-input[type="text"] {
-  padding: 10px;
-  font-size: 18px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  width: 70%;
-  margin-right: 10px;
-}
+    #messages {
+      padding: 10px;
+      text-align: left;
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      background-color: #f9f9f9;
+    }
 
-button {
-  padding: 10px 20px;
-  font-size: 18px;
-  border: none;
-  border-radius: 5px;
-  background-color: #4caf50;
-  color: white;
-  cursor: pointer;
-  width: 30%;
-}
+    #message-form,
+    #username-form,
+    #add-friend-form {
+      display: flex;
+      align-items: center;
+      margin-top: 20px;
+      width: 100%;
+    }
 
-button:hover {
-  background-color: #45a049;
-}
+    input[type="text"] {
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      flex: 1;
+      margin-right: 10px;
+      box-sizing: border-box;
+    }
 
-.typing {
-  font-style: italic;
-  color: #888;
-  margin-top: 10px;
-}
+    button {
+      padding: 10px 10px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      background-color: #4caf50;
+      color: white;
+      cursor: pointer;
+      flex: 0 0 auto;
+      box-sizing: border-box;
+    }
 
+    button:hover {
+      background-color: #45a049;
+    }
+
+    .typing {
+      font-style: italic;
+      color: #888;
+      margin-top: 10px;
+    }
   </style>
 </head>
- <link rel="icon" type="image/png" href="./assets/kumgames.png" />
 <body>
   <div id="container">
     <div id="display-username"></div>
-    <ul id="messages"></ul>
-
-    <form id="message-form">
+    <ul id="menu" style="display: none;">
+      <li id="public-chat">Herkese Açık Sohbet</li>
+      <li id="private-chat">Arkadaş Ekle</li>
+    </ul>
+    <ul id="user-list" style="display: none;"></ul>
+    <ul id="messages" style="display: none;"></ul>
+    <form id="message-form" style="display: none;">
       <input id="m" autocomplete="off" placeholder="Mesajınızı yazın..." />
       <button type="submit">Gönder</button>
     </form>
-
     <form id="username-form">
       <input id="username" autocomplete="off" placeholder="Kullanıcı adınızı girin..." />
       <button type="submit">Kullanıcı Adını Ayarla</button>
     </form>
-
     <div class="typing"></div>
   </div>
 
@@ -110,33 +125,83 @@ button:hover {
   <script>
     var socket = io();
     var user;
+    var currentChatType; // 'general', 'private'
+    var currentChatId;
 
-    $('#username-form').submit(function (e) {
+    $('#username-form').submit(function(e) {
       e.preventDefault();
-      user = $('#username').val();
-      socket.emit('set username', user);
-      $('#username').val('');
-      $('#display-username').text(`Kullanıcı Adı: ${user}`);
-      return false;
+      user = $('#username').val().trim();
+      if (user !== '') {
+        socket.emit('set username', user);
+      }
     });
 
-    $('#message-form').submit(function (e) {
+    socket.on('username set', function(username) {
+      $('#display-username').text(`Kullanıcı Adı: ${username}`);
+      $('#username-form').hide();
+      $('#menu').show();
+    });
+
+    $('#public-chat').click(function() {
+      currentChatType = 'general';
+      currentChatId = 'general';
+      $('#menu').hide();
+      $('#messages').show();
+      $('#message-form').show();
+      $('#user-list').hide();
+      socket.emit('join general');
+    });
+
+    $('#private-chat').click(function() {
+      $('#menu').hide();
+      $('#user-list').show();
+      $('#add-friend-form').hide();
+      socket.emit('get users');
+    });
+
+    socket.on('user list', function(users) {
+      $('#user-list').empty();
+      users.forEach(function(username) {
+        if (username !== user) {
+          $('#user-list').append($('<li>').text(username).click(function() {
+            startPrivateChat(username);
+          }));
+        }
+      });
+    });
+
+    function startPrivateChat(username) {
+      currentChatType = 'private';
+      currentChatId = username;
+      $('#user-list').hide();
+      $('#messages').show();
+      $('#message-form').show();
+      $('#messages').empty();
+    }
+
+    $('#message-form').submit(function(e) {
       e.preventDefault();
       var message = $('#m').val().trim();
       if (message !== '') {
-        socket.emit('chat message', { user: user, message: message });
+        socket.emit('chat message', { type: currentChatType, id: currentChatId, user: user, message: message });
         $('#m').val('');
       }
       return false;
     });
 
-    socket.on('chat message', function (data) {
-      $('#messages').append($('<li>').text(`${data.user}: ${data.message}`));
-      $('#messages').scrollTop($('#messages')[0].scrollHeight);
+    $('#m').on('input', function() {
+      socket.emit('typing', { type: currentChatType, id: currentChatId, user: user, typing: $('#m').val().length > 0 });
     });
 
-    socket.on('display', function (data) {
-      if (data.typing === true) {
+    socket.on('chat message', function(data) {
+      if (data.type === currentChatType && data.id === currentChatId) {
+        $('#messages').append($('<li>').text(`${data.user}: ${data.message}`));
+        $('#messages').scrollTop($('#messages')[0].scrollHeight);
+      }
+    });
+
+    socket.on('display', function(data) {
+      if (data.type === currentChatType && data.id === currentChatId && data.typing) {
         $('.typing').text(`${data.user} yazıyor...`);
       } else {
         $('.typing').text('');
@@ -144,13 +209,4 @@ button:hover {
     });
   </script>
 </body>
-<body>
-   <div class="main-footer__lower">
-          &copy; Copyright 2023. Made by
-          <a rel="noreferrer" target="_blank" href="https://wyltre.app.tc/"
-            >Enes</a
-          >
-        </div>
-</body>
- 
 </html>
